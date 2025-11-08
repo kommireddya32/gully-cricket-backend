@@ -27,6 +27,7 @@ public class GameStateDTO {
     private FirstInningsSummaryDTO firstInningsSummary;
     private List<OverDTO> firstInningsOvers;
     private String matchResult;
+    private String matchEquation;
 
     // --- Getters and Setters ---
 
@@ -189,4 +190,6 @@ public class GameStateDTO {
     public void setMatchResult(String matchResult) {
         this.matchResult = matchResult;
     }
+    public String getMatchEquation() { return matchEquation; }
+    public void setMatchEquation(String matchEquation) { this.matchEquation = matchEquation; }
 }
