@@ -5,6 +5,7 @@ public class GameSetupDTO {
     private String team2Name;
     private int overs;
     private String battingTeam;
+    private int playersPerTeam;
 
     // Getters and Setters
     public String getTeam1Name() { return team1Name; }
@@ -18,4 +19,7 @@ public class GameSetupDTO {
 
     public String getBattingTeam() { return battingTeam; }
     public void setBattingTeam(String battingTeam) { this.battingTeam = battingTeam; }
+    
+    public int getPlayersPerTeam() { return playersPerTeam; }
+    public void setPlayersPerTeam(int playersPerTeam) { this.playersPerTeam = playersPerTeam; }
 }

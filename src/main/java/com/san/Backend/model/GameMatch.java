@@ -29,6 +29,7 @@ public class GameMatch {
     
     private int extrasWides;
     private int extrasNoballs;
+    private int playersPerTeam;
 
     // --- First Innings Final Stats ---
     @Column(columnDefinition = "integer default 0")
@@ -122,4 +123,7 @@ public class GameMatch {
 
     public String getMatchResult() { return matchResult; }
     public void setMatchResult(String matchResult) { this.matchResult = matchResult; }
+    
+    public int getPlayersPerTeam() { return playersPerTeam; }
+    public void setPlayersPerTeam(int playersPerTeam) { this.playersPerTeam = playersPerTeam; }
 }

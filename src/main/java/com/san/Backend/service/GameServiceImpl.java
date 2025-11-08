@@ -39,6 +39,7 @@ public class GameServiceImpl implements GameService {
         game.setTeam1Name(setupDTO.getTeam1Name());
         game.setTeam2Name(setupDTO.getTeam2Name());
         game.setMaxOvers(setupDTO.getOvers());
+        game.setPlayersPerTeam(setupDTO.getPlayersPerTeam()); // Save players per team
         game.setBattingTeam(setupDTO.getBattingTeam());
         
         String bowlingTeam = setupDTO.getTeam1Name().equals(setupDTO.getBattingTeam()) ? 
@@ -61,24 +62,22 @@ public class GameServiceImpl implements GameService {
         game.setInnings1ExtrasWides(0);
         game.setInnings1ExtrasNoballs(0);
 
-
         // Create initial batsmen
         PlayerStats batsman1 = new PlayerStats();
         batsman1.setGameMatch(game);
-        batsman1.setName("Batsman 1"); // Default placeholder name
+        batsman1.setName(""); // Set to empty string
         batsman1.setTeamName(game.getBattingTeam());
         batsman1.setStatus(PlayerStatus.ON_STRIKE);
 
         PlayerStats batsman2 = new PlayerStats();
         batsman2.setGameMatch(game);
-        batsman2.setName("Batsman 2"); // Default placeholder name
+        batsman2.setName(""); // Set to empty string
         batsman2.setTeamName(game.getBattingTeam());
         batsman2.setStatus(PlayerStatus.NON_STRIKE);
 
         game.getPlayerStats().add(batsman1);
         game.getPlayerStats().add(batsman2);
 
-        // Save the game. Batsmen are saved due to Cascade.ALL
         GameMatch savedGame = gameMatchRepository.save(game);
         
         return mapToGameStateDTO(savedGame);
@@ -95,7 +94,6 @@ public class GameServiceImpl implements GameService {
         GameMatch game = findMatchById(matchId);
         PlayerStatus status = PlayerStatus.valueOf(playerUpdate.getPlayerStatus());
 
-        // This endpoint is now ONLY for batsmen. Bowler updates are handled by processBall.
         if (status == PlayerStatus.ON_STRIKE || status == PlayerStatus.NON_STRIKE) {
             PlayerStats player = playerStatsRepository.findByGameMatchAndStatus(game, status)
                 .orElseThrow(() -> new EntityNotFoundException("Player not found with status: " + status));
@@ -110,7 +108,6 @@ public class GameServiceImpl implements GameService {
     @Override
     public GameStateDTO endInnings(Long matchId) {
         GameMatch game = findMatchById(matchId);
-        // We only run this logic if the game is not already completed
         if (game.getStatus() != GameStatus.COMPLETED) {
              runInningsEndLogic(game);
              gameMatchRepository.save(game);
@@ -123,7 +120,7 @@ public class GameServiceImpl implements GameService {
     public GameStateDTO processBall(Long matchId, BallRequestDTO ballRequest) {
         GameMatch game = findMatchById(matchId);
         if (game.getStatus() == GameStatus.COMPLETED) {
-            return mapToGameStateDTO(game); // Game is over
+            return mapToGameStateDTO(game); 
         }
 
         // --- START: Bowler Validation and Setting Logic ---
@@ -136,7 +133,7 @@ public class GameServiceImpl implements GameService {
         PlayerStats currentBowlerInDB = playerStatsRepository.findByGameMatchAndStatus(game, PlayerStatus.CURRENT_BOWLER)
             .orElse(null);
 
-        PlayerStats bowler; // This will be the bowler for this ball
+        PlayerStats bowler; 
         
         if (currentBowlerInDB == null || !currentBowlerInDB.getName().equals(bowlerNameFromRequest)) {
             if (currentBowlerInDB != null) {
@@ -234,10 +231,10 @@ public class GameServiceImpl implements GameService {
                         striker.setStatus(PlayerStatus.BENCH);
                         ballEvent.setEvent("W"); 
 
-                        if (game.getCurrentWickets() < 10) {
+                        if (game.getCurrentWickets() < game.getPlayersPerTeam() - 1) {
                             PlayerStats newBatsman = new PlayerStats();
                             newBatsman.setGameMatch(game);
-                            newBatsman.setName("Batsman " + (game.getCurrentWickets() + 2));
+                            newBatsman.setName(""); // Set to empty string
                             newBatsman.setTeamName(game.getBattingTeam());
                             newBatsman.setStatus(PlayerStatus.ON_STRIKE);
                             game.getPlayerStats().add(newBatsman);
@@ -258,10 +255,10 @@ public class GameServiceImpl implements GameService {
                     }
                     ballEvent.setEvent("W");
 
-                    if (game.getCurrentWickets() < 10) {
+                    if (game.getCurrentWickets() < game.getPlayersPerTeam() - 1) {
                         PlayerStats newBatsman = new PlayerStats();
                         newBatsman.setGameMatch(game);
-                        newBatsman.setName("Batsman " + (game.getCurrentWickets() + 2));
+                        newBatsman.setName(""); // Set to empty string
                         newBatsman.setTeamName(game.getBattingTeam());
                         newBatsman.setStatus(PlayerStatus.ON_STRIKE);
                         game.getPlayerStats().add(newBatsman);
@@ -283,18 +280,14 @@ public class GameServiceImpl implements GameService {
                 bowler.setMaidens(bowler.getMaidens() + 1);
             }
             
-            // --- (FIX for NonUniqueResultException) ---
-            // We must re-fetch the current striker and non-striker
-            // in case they were changed by the wicket logic above.
             PlayerStats currentStriker = playerStatsRepository.findByGameMatchAndStatus(game, PlayerStatus.ON_STRIKE)
-                .orElse(null); // Can be null if 10th wicket fell
+                .orElse(null); 
             PlayerStats currentNonStriker = playerStatsRepository.findByGameMatchAndStatus(game, PlayerStatus.NON_STRIKE)
-                .orElse(null); // Can be null if 10th wicket fell
+                .orElse(null); 
                 
             if (currentStriker != null && currentNonStriker != null) {
                 swapStrike(currentStriker, currentNonStriker);
             }
-            // --- (END OF FIX) ---
 
             bowler.setStatus(PlayerStatus.BENCH); 
             currentOverRuns = 0; 
@@ -302,7 +295,7 @@ public class GameServiceImpl implements GameService {
 
         // --- Check for End of Innings ---
         boolean inningsOver = false;
-        if (game.getCurrentWickets() == 10) {
+        if (game.getCurrentWickets() == game.getPlayersPerTeam() - 1) { // Use playersPerTeam
             inningsOver = true;
         }
         if (isLegalBall && game.getCurrentBalls() == game.getMaxOvers() * 6) {
@@ -356,13 +349,13 @@ public class GameServiceImpl implements GameService {
 
             PlayerStats batsman1 = new PlayerStats();
             batsman1.setGameMatch(game);
-            batsman1.setName("Batsman 1");
+            batsman1.setName(""); // Set to empty string
             batsman1.setTeamName(game.getBattingTeam());
             batsman1.setStatus(PlayerStatus.ON_STRIKE);
 
             PlayerStats batsman2 = new PlayerStats();
             batsman2.setGameMatch(game);
-            batsman2.setName("Batsman 2");
+            batsman2.setName(""); // Set to empty string
             batsman2.setTeamName(game.getBattingTeam());
             batsman2.setStatus(PlayerStatus.NON_STRIKE);
 
@@ -377,7 +370,7 @@ public class GameServiceImpl implements GameService {
             
             if (game.getCurrentScore() >= game.getTarget()) {
                 winningTeam = game.getBattingTeam();
-                int wicketsLeft = 10 - game.getCurrentWickets();
+                int wicketsLeft = (game.getPlayersPerTeam() - 1) - game.getCurrentWickets(); // Use playersPerTeam
                 resultString = winningTeam + " won by " + wicketsLeft + " " + (wicketsLeft == 1 ? "wicket" : "wickets");
             } else if (game.getCurrentScore() == game.getTarget() - 1) {
                 resultString = "Match is a Tie";
@@ -534,7 +527,7 @@ public class GameServiceImpl implements GameService {
         dto.setMaidens(p.getMaidens());
         dto.setRunsConceded(p.getRunsConceded());
         dto.setWickets(p.getWicketsTaken());
-        dto.setEco(calculateECO(p.getRunsConceded(), p.getBallsBowled())); // Corrected typo: getBallsBowled()
+        dto.setEco(calculateECO(p.getRunsConceded(), p.getBallsBowled()));
         return dto;
     }
 
